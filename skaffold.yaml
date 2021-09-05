@@ -1,0 +1,31 @@
+apiVersion: skaffold/v2beta21
+kind: Config
+metadata:
+  name: quilkin-controller
+build:
+  local:
+    useBuildkit: true
+  artifacts:
+  - image: ghcr.io/quilkin-controller
+    docker:
+      dockerfile: Dockerfile
+deploy:
+  kustomize:
+    paths:
+    - config/default
+profiles:
+- name: manager
+  deploy:
+    kustomize:
+      paths:
+      - config/manager
+- name: prometheus
+  deploy:
+    kustomize:
+      paths:
+      - config/prometheus
+- name: rbac
+  deploy:
+    kustomize:
+      paths:
+      - config/rbac

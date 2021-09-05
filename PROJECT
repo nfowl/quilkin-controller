@@ -1,0 +1,6 @@
+domain: my.domain
+layout:
+- go.kubebuilder.io/v3
+projectName: quilkin-controller
+repo: github.com/nfowl/quilkin-controller
+version: "3"
