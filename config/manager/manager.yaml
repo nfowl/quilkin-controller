@@ -29,11 +29,11 @@ spec:
         - /quilkin-controller
         args:
         - --leader-elect
-        image: ghcr.io/quilkin-controller:latest
+        image: ghcr.io/nfowl/quilkin-controller:latest
         name: manager
         ports:
           - containerPort: 18000
-            name: http2-xds
+            name: grpc-xds
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:
@@ -55,5 +55,12 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
+        volumeMounts:
+          - name: temp
+            mountPath: /tmp
+      volumes:
+        - name: temp
+          emptyDir: {}
       serviceAccountName: quilkin-controller
       terminationGracePeriodSeconds: 10
+

@@ -6,7 +6,7 @@ build:
   local:
     useBuildkit: true
   artifacts:
-  - image: ghcr.io/quilkin-controller
+  - image: ghcr.io/nfowl/quilkin-controller
     docker:
       dockerfile: Dockerfile
 deploy:

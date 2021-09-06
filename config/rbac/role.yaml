@@ -5,6 +5,8 @@ metadata:
 rules:
   - verbs:
       - "GET"
+      - "CREATE"
+      - "UPDATE"
     apiGroups:
       - "*"
     resources:

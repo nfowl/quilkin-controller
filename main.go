@@ -18,11 +18,14 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	"github.com/nfowl/quilkin-controller/pkg/xds"
+	"github.com/nfowl/quilkin-controller/internal/cert"
+	"github.com/nfowl/quilkin-controller/internal/pod"
+	"github.com/nfowl/quilkin-controller/internal/xds"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,8 +34,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	//+kubebuilder:scaffold:imports
 )
+
+const controllerName = "quilkin-controller"
 
 var (
 	scheme   = runtime.NewScheme()
@@ -55,10 +61,12 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
-		Development: true,
+		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	cert.SetupServerCert("system", "quilkin-controller")
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -68,7 +76,7 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "ed934d97.my.domain",
+		LeaderElectionID:       fmt.Sprintf("%s-leader-election", controllerName),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -85,6 +93,8 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+	// +kubebuilder:webhook:path=/mutate-v1-pod,mutating=true,failurePolicy=fail,groups="",resources=pods,verbs=create;update,versions=v1,name=quilkin
+	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{Handler: &pod.QuilkinAnnotationReader{Client: mgr.GetClient(), Logger: zap.NewRaw().Sugar()}})
 
 	setupLog.Info("Starting XDS")
 	xds.StartServer(zap.NewRaw().Sugar())
