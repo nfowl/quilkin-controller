@@ -1,0 +1,38 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "quilkin-controller.fullname" . }}
+  namespace: {{ template "quilkin-controller.namespace" . }}
+  labels:
+    {{- include "quilkin-controller.labels" . | nindent 4 }}
+webhooks:
+  - admissionReviewVersions:
+      - "v1"
+      - "v1beta1"
+    clientConfig:
+      caBundle:
+      service:
+        name: {{ include "quilkin-controller.fullname" . }}
+        namespace: {{ template "quilkin-controller.namespace" . }}
+        path: /mutate-v1-pod
+        port: 9443
+    name: quilkin-injector.nfowler.dev
+    objectSelector:
+      matchExpressions:
+        - key: "nfowler.dev/quilkin"
+          operator: NotIn
+          values:
+            - "disabled"
+    sideEffects: "NoneOnDryRun"
+    matchPolicy: Equivalent
+    # failurePolicy: Ignore
+    timeoutSeconds: 10
+    rules:
+      - apiGroups:
+        - ""
+        apiVersions:
+        - "v1"
+        operations:
+          - "*"
+        resources:
+          - "pods"
