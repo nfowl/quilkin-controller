@@ -23,7 +23,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	"github.com/nfowl/quilkin-controller/internal/cert"
+
 	"github.com/nfowl/quilkin-controller/internal/pod"
 	"github.com/nfowl/quilkin-controller/internal/xds"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -55,8 +55,10 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var certDir string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&certDir, "cert-dir", "/cert", "The folder the certs are located in")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -65,8 +67,6 @@ func main() {
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
-
-	cert.SetupServerCert("system", "quilkin-controller")
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -77,6 +77,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       fmt.Sprintf("%s-leader-election", controllerName),
+		CertDir:                certDir,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -93,7 +94,6 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	// +kubebuilder:webhook:path=/mutate-v1-pod,mutating=true,failurePolicy=fail,groups="",resources=pods,verbs=create;update,versions=v1,name=quilkin
 	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{Handler: &pod.QuilkinAnnotationReader{Client: mgr.GetClient(), Logger: zap.NewRaw().Sugar()}})
 
 	setupLog.Info("Starting XDS")

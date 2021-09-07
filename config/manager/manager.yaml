@@ -11,6 +11,7 @@ metadata:
   name: quilkin-controller
   namespace: system
   labels:
+    app: quilkin-controller
     control-plane: quilkin-controller
 spec:
   selector:
@@ -20,7 +21,9 @@ spec:
   template:
     metadata:
       labels:
+        app: quilkin-controller
         control-plane: quilkin-controller
+        nfowler.dev/quilkin: "disabled"
     spec:
       securityContext:
         runAsNonRoot: true
@@ -34,6 +37,8 @@ spec:
         ports:
           - containerPort: 18000
             name: grpc-xds
+          - containerPort: 9443
+            name: https-admission
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:

@@ -15,7 +15,7 @@ spec:
   template:
     metadata:
       annotations:
-        "nfowler.dev/quilkin-sender": "proxy"
+        "nfowler.dev/quilkin.sender": "proxy"
       labels:
         app:  sender-test
     spec:

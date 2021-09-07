@@ -40,6 +40,10 @@ func (q *QuilkinAnnotationReader) Handle(ctx context.Context, req admission.Requ
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
+	if *req.DryRun {
+		return admission.Allowed("Dry Run Ignored")
+	}
+
 	if req.Operation == admissionv1.Create {
 		pod = q.HandleCreate(ctx, pod)
 	}
@@ -52,6 +56,8 @@ func (q *QuilkinAnnotationReader) Handle(ctx context.Context, req admission.Requ
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
+///HandleCreate handles new pods by injecting the sidecar for senders or adding it to the
+///xds node list for receivers
 func (q *QuilkinAnnotationReader) HandleCreate(ctx context.Context, pod *v1.Pod) *v1.Pod {
 	value, ok := pod.Annotations[ReceiverAnnotation]
 	if ok {

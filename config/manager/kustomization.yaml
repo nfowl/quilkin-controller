@@ -1,6 +1,7 @@
 resources:
 - manager.yaml
 - service.yaml
+- webhook.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

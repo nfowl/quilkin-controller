@@ -11,3 +11,7 @@ spec:
     targetPort: 18000
     protocol: TCP
     name: grpc-xds
+  - port: 9443
+    targetPort: 9443
+    protocol: TCP
+    name: https-admission
