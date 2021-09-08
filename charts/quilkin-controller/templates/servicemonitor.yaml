@@ -1,5 +1,5 @@
 # Prometheus Monitor Service (Metrics)
-{{- if .Values.serviceMonitor.enabled }}
+{{- if .Values.controller.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

@@ -1,13 +1,28 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: manager-role
+  name: {{ template "quilkin-controller.fullname" . }}
+  namespace: {{ template "quilkin-controller.namespace" . }}
+  labels:
+    app: {{ template "quilkin-controller.name" $ }}
+{{- include "quilkin-controller.labels" . | nindent 4 }}
 rules:
+  # - verbs:
+  #     - "GET"
+  #     - "CREATE"
+  #     - "UPDATE"
+  #   apiGroups:
+  #     - ""
+  #   resources:
+  #     - "pods"
   - verbs:
-      - "GET"
-      - "CREATE"
-      - "UPDATE"
+      - "get"
+      - "create"
+      - "update"
+      - "delete"
+      - "list"
+      - "watch"
     apiGroups:
-      - "*"
+      - ""
     resources:
-      - "*"
+      - "configmaps"

@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "quilkin-controller.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "quilkin-controller.fullname" . }}:{{ .Values.controller.service.metricsPort }}']
   restartPolicy: Never

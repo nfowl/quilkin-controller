@@ -10,22 +10,11 @@ build:
     docker:
       dockerfile: Dockerfile
 deploy:
-  kustomize:
-    paths:
-    - config/default
-profiles:
-- name: manager
-  deploy:
-    kustomize:
-      paths:
-      - config/manager
-- name: prometheus
-  deploy:
-    kustomize:
-      paths:
-      - config/prometheus
-- name: rbac
-  deploy:
-    kustomize:
-      paths:
-      - config/rbac
+  helm:
+    releases:
+    - name: quilkin-controller
+      chartPath: charts/quilkin-controller
+      artifactOverrides:
+        controller.image: ghcr.io/nfowl/quilkin-controller # no tag present!
+      imageStrategy:
+        helm: {}

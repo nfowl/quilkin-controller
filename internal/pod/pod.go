@@ -3,6 +3,7 @@ package pod
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -35,30 +36,29 @@ func (q *QuilkinAnnotationReader) InjectDecoder(d *admission.Decoder) error {
 }
 
 func (q *QuilkinAnnotationReader) Handle(ctx context.Context, req admission.Request) admission.Response {
-	pod := &corev1.Pod{}
-	err := q.decoder.Decode(req, pod)
-	if err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
+	if req.Operation == admissionv1.Delete {
+		//TODO add deletion cleanup
+		return admission.Allowed("No OP")
 	}
+	//Handle updates/creates
 	if *req.DryRun {
 		return admission.Allowed("Dry Run Ignored")
 	}
 
 	if req.Operation == admissionv1.Create {
-		pod = q.HandleCreate(ctx, pod)
+		return q.HandleCreate(ctx, req)
 	}
-	//TODO HANDLE DELETE AND UPDATE
-
-	marshaledPod, err := json.Marshal(pod)
-	if err != nil {
-		return admission.Errored(http.StatusInternalServerError, err)
-	}
-	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
+	return admission.Errored(http.StatusInternalServerError, errors.New("Failed to run webhook"))
 }
 
 ///HandleCreate handles new pods by injecting the sidecar for senders or adding it to the
 ///xds node list for receivers
-func (q *QuilkinAnnotationReader) HandleCreate(ctx context.Context, pod *v1.Pod) *v1.Pod {
+func (q *QuilkinAnnotationReader) HandleCreate(ctx context.Context, req admission.Request) admission.Response {
+	pod := &corev1.Pod{}
+	err := q.decoder.Decode(req, pod)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
 	value, ok := pod.Annotations[ReceiverAnnotation]
 	if ok {
 		annotationValues := strings.Split(value, ":")
@@ -78,7 +78,7 @@ func (q *QuilkinAnnotationReader) HandleCreate(ctx context.Context, pod *v1.Pod)
 	if ok {
 		store.AddSender(value)
 		cm := &v1.ConfigMap{}
-		err := q.Client.Get(ctx, client.ObjectKey{Namespace: pod.Namespace, Name: "quilkin-" + value}, cm)
+		err := q.Client.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: "quilkin-" + value}, cm)
 		if err != nil {
 			conf, err := yaml.Marshal(quilkin.NewQuilkinConfig(value))
 			if err != nil {
@@ -86,8 +86,11 @@ func (q *QuilkinAnnotationReader) HandleCreate(ctx context.Context, pod *v1.Pod)
 			}
 			//Create new cm
 			cm.Name = "quilkin-" + value
-			cm.Namespace = pod.Namespace
+			q.Logger.Infow("namespace", "ns", req.Namespace)
+			cm.Namespace = req.Namespace
+			cm.Labels = make(map[string]string)
 			cm.Labels["managed-by"] = "quilkin-controller"
+			cm.Data = make(map[string]string)
 			cm.Data["quilkin.yaml"] = string(conf)
 			err = q.Client.Create(ctx, cm)
 			if err != nil {
@@ -96,14 +99,20 @@ func (q *QuilkinAnnotationReader) HandleCreate(ctx context.Context, pod *v1.Pod)
 		}
 
 		container := makeQuilkinContainer()
+		q.Logger.Infow("quilkin", "container", container.String())
 		pod.Spec.Containers = append(pod.Spec.Containers, container)
 		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{Name: "quilkin-config", VolumeSource: v1.VolumeSource{ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: "quilkin-" + value}}}})
 	}
-	return pod
+	marshaledPod, err := json.Marshal(pod)
+
+	if err != nil {
+		return admission.Errored(http.StatusInternalServerError, err)
+	}
+	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
 func makeQuilkinContainer() v1.Container {
-	volumes := make([]v1.VolumeMount, 1)
+	volumes := make([]v1.VolumeMount, 0, 1)
 	volumes = append(volumes, v1.VolumeMount{Name: "quilkin-config", ReadOnly: true, MountPath: "/etc/quilkin"})
 	return v1.Container{
 		Name:         "quilkin",

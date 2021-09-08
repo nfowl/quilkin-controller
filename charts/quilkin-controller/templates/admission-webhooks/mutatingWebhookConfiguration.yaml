@@ -1,0 +1,44 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "quilkin-controller.fullname" . }}-admission
+{{- if .Values.admissionWebhooks.certManager.enabled }}
+  annotations:
+    certmanager.k8s.io/inject-ca-from: {{ printf "%s/%s-admission" .Release.Namespace (include "quilkin-controller.fullname" .) | quote }}
+    cert-manager.io/inject-ca-from: {{ printf "%s/%s-admission" .Release.Namespace (include "quilkin-controller.fullname" .) | quote }}
+{{- end }}
+  labels:
+    {{- include "quilkin-controller.labels" . | nindent 4 }}
+webhooks:
+  - admissionReviewVersions:
+      - "v1"
+      - "v1beta1"
+    clientConfig:
+      service:
+        name: {{ template "quilkin-controller.fullname" $ }}
+        namespace: {{ template "quilkin-controller.namespace" . }}
+        path: /mutate-v1-pod
+        port: {{ .Values.controller.service.webhookPort }}
+      {{- if and .Values.admissionWebhooks.caBundle (not .Values.admissionWebhooks.patch.enabled) (not .Values.admissionWebhooks.certManager.enabled) }}
+      caBundle: {{ .Values.admissionWebhooks.caBundle }}
+      {{- end }}
+    name: quilkin-injector.nfowler.dev
+    objectSelector:
+      matchExpressions:
+        - key: "nfowler.dev/quilkin"
+          operator: NotIn
+          values:
+            - "disabled"
+    sideEffects: "NoneOnDryRun"
+    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.admissionWebhooks.failurePolicy }}
+    timeoutSeconds: 10
+    rules:
+      - apiGroups:
+        - ""
+        apiVersions:
+        - "v1"
+        operations:
+          - "*"
+        resources:
+          - "pods"
