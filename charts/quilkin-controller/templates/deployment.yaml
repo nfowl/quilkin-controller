@@ -38,6 +38,7 @@ spec:
           - /quilkin-controller
           args:
           - --leader-elect
+          - --quilkin-image={{ .Values.controller.proxyImage }}
           ports:
             - name: https-admission
               containerPort: 9443

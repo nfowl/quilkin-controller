@@ -1,4 +1,20 @@
-package pod
+/*
+Copyright 2021.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
 
 import (
 	"context"
@@ -11,7 +27,6 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	admissionv1 "k8s.io/api/admission/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -22,6 +37,10 @@ const (
 	ReceiverAnnotation = "nfowler.dev/quilkin.receiver"
 	SenderAnnotation   = "nfowler.dev/quilkin.sender"
 	Finalizer          = "quilkin.nfowler.dev/finalizer"
+)
+
+var (
+	QuilkinImage = "us-docker.pkg.dev/quilkin/release/quilkin:0.1.0"
 )
 
 type QuilkinAnnotationReader struct {
@@ -64,7 +83,7 @@ func (q *QuilkinAnnotationReader) Handle(ctx context.Context, req admission.Requ
 }
 
 func (q *QuilkinAnnotationReader) handleDelete(ctx context.Context, req admission.Request) admission.Response {
-	pod := &corev1.Pod{}
+	pod := &v1.Pod{}
 	err := q.decoder.DecodeRaw(req.OldObject, pod)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
@@ -81,7 +100,7 @@ func (q *QuilkinAnnotationReader) handleDelete(ctx context.Context, req admissio
 ///HandleCreate handles new pods by injecting the sidecar for senders or adding it to the
 ///xds node list for receivers
 func (q *QuilkinAnnotationReader) handleCreate(ctx context.Context, req admission.Request) admission.Response {
-	pod := &corev1.Pod{}
+	pod := &v1.Pod{}
 	err := q.decoder.Decode(req, pod)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
@@ -138,10 +157,10 @@ func makeQuilkinContainer() v1.Container {
 	volumes := make([]v1.VolumeMount, 0, 1)
 	volumes = append(volumes, v1.VolumeMount{Name: "quilkin-config", ReadOnly: true, MountPath: "/etc/quilkin"})
 	ports := make([]v1.ContainerPort, 0, 1)
-	ports = append(ports, v1.ContainerPort{Name: "http-admin", ContainerPort: 9091, Protocol: corev1.ProtocolTCP})
+	ports = append(ports, v1.ContainerPort{Name: "http-admin", ContainerPort: 9091, Protocol: v1.ProtocolTCP})
 	return v1.Container{
 		Name:         "quilkin",
-		Image:        "us-docker.pkg.dev/quilkin/release/quilkin:0.1.0",
+		Image:        QuilkinImage,
 		VolumeMounts: volumes,
 		Ports:        ports,
 	}
