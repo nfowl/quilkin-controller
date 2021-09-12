@@ -30,6 +30,7 @@ func NewQuilkinConfig(proxyName string) QuilkinConfig {
 	return QuilkinConfig{
 		Version: "v1alpha1",
 		Proxy:   ProxyConfig{Id: proxyName, Port: 7000},
-		Dynamic: DynamicConfig{ManagementServers: []*Address{{Address: "http://" + os.Getenv("SVC_NAME") + "." + os.Getenv("POD_NAMESPACE") + ".svc.cluster.local"}}},
+		Admin:   AdminConfig{Address: "[::]:9091"},
+		Dynamic: DynamicConfig{ManagementServers: []*Address{{Address: "http://" + os.Getenv("SVC_NAME") + "." + os.Getenv("POD_NAMESPACE") + ".svc.cluster.local:18000"}}},
 	}
 }

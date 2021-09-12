@@ -25,7 +25,9 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 
 	"github.com/nfowl/quilkin-controller/internal/pod"
+	"github.com/nfowl/quilkin-controller/internal/store"
 	"github.com/nfowl/quilkin-controller/internal/xds"
+	corev1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -94,10 +96,18 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{Handler: &pod.QuilkinAnnotationReader{Client: mgr.GetClient(), Logger: zap.NewRaw().Sugar()}})
+	updates := make(chan store.NodeConfig)
+	deletes := make(chan string)
+
+	inMemoryStore := store.NewSoTWStore(updates, deletes, zap.NewRaw().Sugar())
+
+	ctrl.NewControllerManagedBy(mgr).For(&corev1.Pod{}).WithEventFilter(pod.IgnoreDeletionPredicate()).Complete(pod.NewQuilkinReconciler(mgr.GetClient(), zap.NewRaw().Sugar(), inMemoryStore))
+
+	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{Handler: pod.NewQuilkinAnnotationReader(mgr.GetClient(), zap.NewRaw().Sugar(), inMemoryStore)})
 
 	setupLog.Info("Starting XDS")
-	xds.StartServer(zap.NewRaw().Sugar())
+
+	xds.StartServer(zap.NewRaw().Sugar(), updates, deletes)
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
