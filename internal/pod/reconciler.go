@@ -31,7 +31,7 @@ func NewQuilkinReconciler(c client.Client, l *zap.SugaredLogger, s store.SoTWSto
 func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	pod := &corev1.Pod{}
 	err := q.client.Get(ctx, req.NamespacedName, pod)
-	q.logger.Infow("Calling reconciler for pod", "name", req.NamespacedName.String())
+	q.logger.Debugw("Calling reconciler for pod", "name", req.NamespacedName.String())
 	if err != nil {
 		q.logger.Debug("Failed to decode pod for reconciling")
 	}
@@ -70,7 +70,7 @@ func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request
 		if err := q.client.Update(ctx, pod); err != nil {
 			return reconcile.Result{}, err
 		}
-	} else if pod.Status.Phase == corev1.PodRunning && isReceiver(pod) && !pod.DeletionTimestamp.IsZero() {
+	} else if pod.Status.Phase == corev1.PodRunning && isReceiver(pod) && pod.DeletionTimestamp.IsZero() {
 		q.handleRunningReceiver(pod)
 	}
 	return reconcile.Result{}, nil

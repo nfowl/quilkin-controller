@@ -24,6 +24,8 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
+	//+kubebuilder:scaffold:imports
+
 	"github.com/nfowl/quilkin-controller/internal/pod"
 	"github.com/nfowl/quilkin-controller/internal/store"
 	"github.com/nfowl/quilkin-controller/internal/xds"
@@ -37,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	//+kubebuilder:scaffold:imports
 )
 
 const controllerName = "quilkin-controller"
@@ -85,8 +86,6 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-
-	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

@@ -36,13 +36,12 @@ type CacheUpdater struct {
 func (c *CacheUpdater) handleUpdates() {
 	c.logger.Info("Starting Cache Update handler")
 	for update := range c.updates {
-		c.logger.Info("Update snapshot for node: ", update.ProxyName)
 		snap := generateNodeSnapshot(update)
 		if err := snap.Consistent(); err != nil {
 			c.logger.Errorf("snapshot inconsistency: %s", err)
 			os.Exit(1)
 		}
-		// c.logger.Infof("will serve snapshot %+v", snap)
+		// c.logger.Infow("will serve snapshot", snap)
 		if err := c.cache.SetSnapshot(update.ProxyName, snap); err != nil {
 			c.logger.Errorf("snapshot error %q for %+v", err, snap)
 			os.Exit(1)
