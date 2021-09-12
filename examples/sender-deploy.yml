@@ -22,8 +22,36 @@ spec:
       containers:
       - name: samplepod
         command: ["/bin/ash", "-c", "trap : TERM INT; sleep infinity & wait"]
-        image: alpine
+        image: python:3.9-alpine
         resources:
           limits:
             memory: "128Mi"
             cpu: "500m"
+        volumeMounts:
+          - mountPath: /test
+            name: sendertest
+      volumes:
+        - name: sendertest
+          configMap:
+            name: sender
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sender
+  namespace: quilkin-testing
+data:
+  test.py: |
+    import socket
+    from time import sleep
+
+    UDP_PORT = 7000
+    MESSAGE = b"asdjjkasjjkasdsdajkljklasdjkasdjklasdjkljkasdjkdasjkjkasdjklasdjklasdjkasjkdjkasdjkasdjkasdjkjkasdjkasdjkasdjkjkasdjkasdjasdjkjasdjasjkjgdkfshjfdgsdfghjfhjsdghfgddfghsdfghfsdghjdfghs"
+    UDP_IP = "0.0.0.0"
+    sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+    while True:
+        sock.sendto(MESSAGE,(UDP_IP,UDP_PORT))
+        sleep(0.001)
+
+
+

@@ -18,10 +18,10 @@ import (
 type QuilkinReconciler struct {
 	client client.Client
 	logger *zap.SugaredLogger
-	store  store.SoTWStore
+	store  *store.SoTWStore
 }
 
-func NewQuilkinReconciler(c client.Client, l *zap.SugaredLogger, s store.SoTWStore) *QuilkinReconciler {
+func NewQuilkinReconciler(c client.Client, l *zap.SugaredLogger, s *store.SoTWStore) *QuilkinReconciler {
 	return &QuilkinReconciler{
 		client: c,
 		logger: l,
@@ -77,8 +77,9 @@ func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request
 }
 
 /// handleRunningReceiver This adds the receiver to the xds node
+/// This function assumes the pod has already had its annotations checked for the correct one
 func (q *QuilkinReconciler) handleRunningReceiver(pod *corev1.Pod) {
-	value, _ := pod.Annotations[ReceiverAnnotation]
+	value := pod.Annotations[ReceiverAnnotation]
 	proxyName, port, err := parseReceiveAnnotation(value)
 	if err != nil {
 		q.logger.Errorw("Error parsing annotation", "annotation", value)
@@ -101,11 +102,6 @@ func parseReceiveAnnotation(annotation string) (string, int, error) {
 }
 
 func isReceiver(pod *corev1.Pod) bool {
-	_, ok := pod.Annotations[ReceiverAnnotation]
-	return ok
-}
-
-func isSender(pod *corev1.Pod) bool {
 	_, ok := pod.Annotations[ReceiverAnnotation]
 	return ok
 }

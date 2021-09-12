@@ -14,9 +14,9 @@ type SoTWStore struct {
 	logger      *zap.SugaredLogger
 }
 
-func NewSoTWStore(updates chan NodeConfig, deletes chan string, logger *zap.SugaredLogger) SoTWStore {
+func NewSoTWStore(updates chan NodeConfig, deletes chan string, logger *zap.SugaredLogger) *SoTWStore {
 	nodes := make(map[string]*NodeConfig)
-	return SoTWStore{Nodes: nodes, nodeUpdates: updates, nodeDeletes: deletes, logger: logger}
+	return &SoTWStore{Nodes: nodes, nodeUpdates: updates, nodeDeletes: deletes, logger: logger}
 }
 
 type NodeConfig struct {

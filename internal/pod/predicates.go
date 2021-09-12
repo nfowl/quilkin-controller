@@ -28,8 +28,5 @@ func HasAnnotations(obj client.Object) bool {
 		return true
 	}
 	_, ok = obj.GetAnnotations()[SenderAnnotation]
-	if ok {
-		return true
-	}
-	return false
+	return ok
 }

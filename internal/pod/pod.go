@@ -28,10 +28,10 @@ type QuilkinAnnotationReader struct {
 	client  client.Client
 	decoder *admission.Decoder
 	logger  *zap.SugaredLogger
-	store   store.SoTWStore
+	store   *store.SoTWStore
 }
 
-func NewQuilkinAnnotationReader(c client.Client, l *zap.SugaredLogger, s store.SoTWStore) *QuilkinAnnotationReader {
+func NewQuilkinAnnotationReader(c client.Client, l *zap.SugaredLogger, s *store.SoTWStore) *QuilkinAnnotationReader {
 	return &QuilkinAnnotationReader{
 		client: c,
 		logger: l,

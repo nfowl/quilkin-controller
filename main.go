@@ -100,8 +100,11 @@ func main() {
 
 	inMemoryStore := store.NewSoTWStore(updates, deletes, zap.NewRaw().Sugar())
 
-	ctrl.NewControllerManagedBy(mgr).For(&corev1.Pod{}).WithEventFilter(pod.IgnoreDeletionPredicate()).Complete(pod.NewQuilkinReconciler(mgr.GetClient(), zap.NewRaw().Sugar(), inMemoryStore))
-
+	err = ctrl.NewControllerManagedBy(mgr).For(&corev1.Pod{}).WithEventFilter(pod.IgnoreDeletionPredicate()).Complete(pod.NewQuilkinReconciler(mgr.GetClient(), zap.NewRaw().Sugar(), inMemoryStore))
+	if err != nil {
+		setupLog.Error(err, "Failed to add reconciler")
+		os.Exit(1)
+	}
 	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{Handler: pod.NewQuilkinAnnotationReader(mgr.GetClient(), zap.NewRaw().Sugar(), inMemoryStore)})
 
 	setupLog.Info("Starting XDS")
