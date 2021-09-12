@@ -31,12 +31,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// QuilkinReconciler contains the required objects to run the Reconcile loop
 type QuilkinReconciler struct {
 	client client.Client
 	logger *zap.SugaredLogger
 	store  *store.SoTWStore
 }
 
+// NewQuilkinReconciler constructs a new QuilkinReconciler struct from the passed arguments
 func NewQuilkinReconciler(c client.Client, l *zap.SugaredLogger, s *store.SoTWStore) *QuilkinReconciler {
 	return &QuilkinReconciler{
 		client: c,
@@ -45,6 +47,8 @@ func NewQuilkinReconciler(c client.Client, l *zap.SugaredLogger, s *store.SoTWSt
 	}
 }
 
+// Reconcile implements the reconciliation logic for all pods that are acting as either a
+// quilkin sender/receiver
 func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	pod := &corev1.Pod{}
 	err := q.client.Get(ctx, req.NamespacedName, pod)
@@ -52,8 +56,9 @@ func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	if err != nil {
 		q.logger.Debug("Failed to decode pod for reconciling")
 	}
+
+	// Pod with the required finalizers is being deleted
 	if !pod.DeletionTimestamp.IsZero() && containsString(pod.GetFinalizers(), Finalizer) {
-		//Handle and remove finalizer for receiver
 		q.logger.Infow("Handling finalizer")
 		value, ok := pod.Annotations[ReceiverAnnotation]
 		if ok {
@@ -65,7 +70,7 @@ func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request
 			q.store.RemoveReceiver(proxyName, pod.Name)
 		}
 
-		//Handle and remove finalizer for sender
+		// Handle and remove finalizer for sender
 		value, ok = pod.Annotations[SenderAnnotation]
 		if ok {
 			q.logger.Infow("Removing sender", "sender", value)
@@ -93,8 +98,8 @@ func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	return reconcile.Result{}, nil
 }
 
-/// handleRunningReceiver This adds the receiver to the xds node
-/// This function assumes the pod has already had its annotations checked for the correct one
+// handleRunningReceiver This adds the receiver to the xds node
+// This function assumes the pod has already had its annotations checked for the correct one
 func (q *QuilkinReconciler) handleRunningReceiver(pod *corev1.Pod) {
 	value := pod.Annotations[ReceiverAnnotation]
 	proxyName, port, err := parseReceiveAnnotation(value)
@@ -105,24 +110,28 @@ func (q *QuilkinReconciler) handleRunningReceiver(pod *corev1.Pod) {
 	q.store.AddReceiver(proxyName, port, pod.Status.PodIP, pod.Name)
 }
 
+// parseReceiveAnnotation validates and parses the string provided and returns the proxyName and port
+// if they are valid.
 func parseReceiveAnnotation(annotation string) (string, int, error) {
 	annotationValues := strings.Split(annotation, ":")
 	if len(annotationValues) != 2 {
-		return "", 0, errors.New("Annotation is not valid proxyname:port Combo")
+		return "", 0, errors.New("annotation is not valid proxyname:port Combo")
 	}
 	proxyName := annotationValues[0]
 	port, err := net.ParsePort(annotationValues[1], false)
 	if err != nil {
-		return "", 0, errors.New("Annotation port is not a valid port")
+		return "", 0, errors.New("annotation port is not a valid port")
 	}
 	return proxyName, port, nil
 }
 
+// isReceiver returns whether the pod is a receiver or not
 func isReceiver(pod *corev1.Pod) bool {
 	_, ok := pod.Annotations[ReceiverAnnotation]
 	return ok
 }
 
+// containsString returns whether or not the slice provided contains the string provided.
 func containsString(slice []string, s string) bool {
 	for _, item := range slice {
 		if item == s {

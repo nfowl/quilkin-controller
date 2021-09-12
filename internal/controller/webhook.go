@@ -34,12 +34,16 @@ import (
 )
 
 const (
+	// Annotation key used to indicate a pod is receiver udp traffic from a quilkin sender
 	ReceiverAnnotation = "nfowler.dev/quilkin.receiver"
-	SenderAnnotation   = "nfowler.dev/quilkin.sender"
-	Finalizer          = "quilkin.nfowler.dev/finalizer"
+	// Annotation key used to indicate a pod is sending udp traffic to any listening receivers
+	SenderAnnotation = "nfowler.dev/quilkin.sender"
+	// The finalizer string used to cleanup and setup senders/receivers as part of the reconcile action
+	Finalizer = "quilkin.nfowler.dev/finalizer"
 )
 
 var (
+	// The image source that will be injected in as a sidecar to senders
 	QuilkinImage = "us-docker.pkg.dev/quilkin/release/quilkin:0.1.0"
 )
 
@@ -58,11 +62,14 @@ func NewQuilkinAnnotationReader(c client.Client, l *zap.SugaredLogger, s *store.
 	}
 }
 
+// InjectDecoder injects the admission decoder into the QuilkinAnnotationReader provided
 func (q *QuilkinAnnotationReader) InjectDecoder(d *admission.Decoder) error {
 	q.decoder = d
 	return nil
 }
 
+// Handle is the function that handles all webhook admission requests
+// Currently this only acts on Create requests. Updates/Deletes are mostly handled as part of the reconciler.
 func (q *QuilkinAnnotationReader) Handle(ctx context.Context, req admission.Request) admission.Response {
 	//Handle updates/creates
 	if *req.DryRun {
@@ -70,7 +77,7 @@ func (q *QuilkinAnnotationReader) Handle(ctx context.Context, req admission.Requ
 	}
 
 	if req.Operation == admissionv1.Delete {
-		return q.handleDelete(ctx, req)
+		return admission.Allowed("NO OP")
 	}
 	if req.Operation == admissionv1.Create {
 		return q.handleCreate(ctx, req)
@@ -79,26 +86,11 @@ func (q *QuilkinAnnotationReader) Handle(ctx context.Context, req admission.Requ
 		return admission.Allowed("NO OP")
 	}
 
-	return admission.Errored(http.StatusInternalServerError, errors.New("Failed to run webhook"))
+	return admission.Errored(http.StatusInternalServerError, errors.New("failed to run webhook"))
 }
 
-func (q *QuilkinAnnotationReader) handleDelete(ctx context.Context, req admission.Request) admission.Response {
-	pod := &v1.Pod{}
-	err := q.decoder.DecodeRaw(req.OldObject, pod)
-	if err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-
-	//No changes required as pod is not part of
-	if !HasAnnotations(pod) {
-		return admission.Allowed("No changes required")
-	}
-
-	return admission.Allowed("NO OP")
-}
-
-///HandleCreate handles new pods by injecting the sidecar for senders or adding it to the
-///xds node list for receivers
+// handleCreate handles new pods by adding the finalizer and if the pod is a sender it will inject
+// the sidecar proxy
 func (q *QuilkinAnnotationReader) handleCreate(ctx context.Context, req admission.Request) admission.Response {
 	pod := &v1.Pod{}
 	err := q.decoder.Decode(req, pod)
@@ -153,6 +145,7 @@ func (q *QuilkinAnnotationReader) handleCreate(ctx context.Context, req admissio
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
+// makeQuilkinContainer constructs the sidecar container definition
 func makeQuilkinContainer() v1.Container {
 	volumes := make([]v1.VolumeMount, 0, 1)
 	volumes = append(volumes, v1.VolumeMount{Name: "quilkin-config", ReadOnly: true, MountPath: "/etc/quilkin"})

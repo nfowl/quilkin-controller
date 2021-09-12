@@ -22,7 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-func IgnoreDeletionPredicate() predicate.Predicate {
+// OnlyIncludeAnnotatedPredicate is a predicate that is passed to the reconciler
+// to only watch pods with the required annotations
+func OnlyIncludeAnnotatedPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			value := HasAnnotations(e.ObjectOld) || HasAnnotations(e.ObjectNew)
@@ -38,6 +40,8 @@ func IgnoreDeletionPredicate() predicate.Predicate {
 	}
 }
 
+// HasAnnotations checks whether the passed object has one of the
+// sender or receiver annotations
 func HasAnnotations(obj client.Object) bool {
 	_, ok := obj.GetAnnotations()[ReceiverAnnotation]
 	if ok {

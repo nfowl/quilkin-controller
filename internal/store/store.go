@@ -22,17 +22,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type SoTWStore struct {
-	mu          sync.Mutex
+// SotwStore stores the State of the World as the controller sees it.
+// It contains channels that can be used to communicate with the xds cache on changes.
+// This is thread safe as every modification is done behind a mutex.
+type SotwStore struct {
+	mu          sync.Mutex //FIXME Consider using smarter method of updating this to avoid mutex abuse
 	Nodes       map[string]*NodeConfig
 	nodeUpdates chan NodeConfig
 	nodeDeletes chan string
 	logger      *zap.SugaredLogger
 }
 
-func NewSoTWStore(updates chan NodeConfig, deletes chan string, logger *zap.SugaredLogger) *SoTWStore {
+func NewSotWStore(updates chan NodeConfig, deletes chan string, logger *zap.SugaredLogger) *SotwStore {
 	nodes := make(map[string]*NodeConfig)
-	return &SoTWStore{Nodes: nodes, nodeUpdates: updates, nodeDeletes: deletes, logger: logger}
+	return &SotwStore{Nodes: nodes, nodeUpdates: updates, nodeDeletes: deletes, logger: logger}
 }
 
 type NodeConfig struct {
@@ -46,7 +49,7 @@ type Endpoint struct {
 	Port    int
 }
 
-func (s *SoTWStore) AddReceiver(proxyName string, port int, address string, podName string) {
+func (s *SotwStore) AddReceiver(proxyName string, port int, address string, podName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.Nodes[proxyName]
@@ -63,7 +66,7 @@ func (s *SoTWStore) AddReceiver(proxyName string, port int, address string, podN
 	s.nodeUpdates <- *value
 }
 
-func (s *SoTWStore) AddSender(proxyName string) {
+func (s *SotwStore) AddSender(proxyName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.Nodes[proxyName]
@@ -76,7 +79,9 @@ func (s *SoTWStore) AddSender(proxyName string) {
 	s.nodeUpdates <- *value
 }
 
-func (s *SoTWStore) RemoveReceiver(proxyName string, podName string) {
+// RemoveReceiver deletes a receiver from a node if it exists.
+// The xds server is notified of the change if one occurs
+func (s *SotwStore) RemoveReceiver(proxyName string, podName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.Nodes[proxyName]
@@ -88,8 +93,8 @@ func (s *SoTWStore) RemoveReceiver(proxyName string, podName string) {
 }
 
 /// RemoveSender removes a quilkin proxy node/sender and returns whether or not its the last instance
-/// using that proxyName
-func (s *SoTWStore) RemoveSender(proxyName string) bool {
+/// using that proxyName. If a node is removed the xds server is notified of the change.
+func (s *SotwStore) RemoveSender(proxyName string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	node, ok := s.Nodes[proxyName]
