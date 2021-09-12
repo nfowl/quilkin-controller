@@ -21,7 +21,7 @@ controller:
     pullPolicy: IfNotPresent
 
   # The Quilkin image to inject into sender pods
-  proxyImage: faketest
+  proxyImage: us-docker.pkg.dev/quilkin/release/quilkin:0.1.0
 
   serviceAccount:
     # Specifies whether a service account should be created

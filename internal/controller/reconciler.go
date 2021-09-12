@@ -35,11 +35,11 @@ import (
 type QuilkinReconciler struct {
 	client client.Client
 	logger *zap.SugaredLogger
-	store  *store.SoTWStore
+	store  *store.SotwStore
 }
 
 // NewQuilkinReconciler constructs a new QuilkinReconciler struct from the passed arguments
-func NewQuilkinReconciler(c client.Client, l *zap.SugaredLogger, s *store.SoTWStore) *QuilkinReconciler {
+func NewQuilkinReconciler(c client.Client, l *zap.SugaredLogger, s *store.SotwStore) *QuilkinReconciler {
 	return &QuilkinReconciler{
 		client: c,
 		logger: l,

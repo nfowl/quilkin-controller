@@ -10,7 +10,7 @@ This project is not production ready use at own risk. Breaking changes may be in
 To configure the client pods add the following annotations to the pod annotation spec in your deployment.
 see the [examples](examples) folder for deployments you can use to test it.
 
-`nfowler.dev/quilkin.receiver: "proxy:4000"`: Indicates the pod wants to receive data from the node name provided at the port specified.
-`nfowler.dev/quilkin.sender: "proxy"`: Injects a quilkin proxy with a name corresponding to the value provided.
+- `nfowler.dev/quilkin.receiver: "proxy:4000"`: Indicates the pod wants to receive data from the node name provided at the port specified.
+- `nfowler.dev/quilkin.sender: "proxy"`: Injects a quilkin proxy with a name corresponding to the value provided.
 
 ## Installation

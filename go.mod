@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	github.com/envoyproxy/go-control-plane v0.9.9
-	go.uber.org/atomic v1.6.0
 	go.uber.org/zap v1.15.0
 	google.golang.org/grpc v1.36.0
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776

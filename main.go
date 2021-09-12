@@ -102,9 +102,9 @@ func main() {
 	updates := make(chan store.NodeConfig)
 	deletes := make(chan string)
 
-	inMemoryStore := store.NewSoTWStore(updates, deletes, zap.NewRaw().Sugar())
+	inMemoryStore := store.NewSotWStore(updates, deletes, zap.NewRaw().Sugar())
 
-	err = ctrl.NewControllerManagedBy(mgr).For(&corev1.Pod{}).WithEventFilter(controller.IgnoreDeletionPredicate()).Complete(controller.NewQuilkinReconciler(mgr.GetClient(), zap.NewRaw().Sugar(), inMemoryStore))
+	err = ctrl.NewControllerManagedBy(mgr).For(&corev1.Pod{}).WithEventFilter(controller.OnlyIncludeAnnotatedPredicate()).Complete(controller.NewQuilkinReconciler(mgr.GetClient(), zap.NewRaw().Sugar(), inMemoryStore))
 	if err != nil {
 		setupLog.Error(err, "Failed to add reconciler")
 		os.Exit(1)
