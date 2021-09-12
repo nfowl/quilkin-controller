@@ -1,0 +1,15 @@
+apiVersion: v1
+entries:
+  quilkin-controller:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2021-09-12T13:33:03.187275291Z"
+    description: controller to inject quilkin proxys sidecars and add endpoints via
+      annotations
+    digest: b4637a413f6c90239737ba3c2f72ea7893c7d1a8f06f5ab7c1cf114b91fbe993
+    name: quilkin-controller
+    type: application
+    urls:
+    - https://github.com/nfowl/quilkin-controller/releases/download/quilkin-controller-0.1.1/quilkin-controller-0.1.1.tgz
+    version: 0.1.1
+generated: "2021-09-12T13:33:03.187280891Z"
