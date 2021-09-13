@@ -14,3 +14,9 @@ see the [examples](examples) folder for deployments you can use to test it.
 - `nfowler.dev/quilkin.sender: "proxy"`: Injects a quilkin proxy with a name corresponding to the value provided.
 
 ## Installation
+
+The supported method of installation for this controller is via [Helm](https://helm.sh/). The helm chart is hosted as part of this repo and can be added via:
+
+```bash
+helm repo add quilkin-controller https://nfowl.github.io/quilkin-controller/
+```
