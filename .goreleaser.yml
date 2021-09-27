@@ -41,6 +41,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--platform=linux/amd64"
   - image_templates:
     - ghcr.io/nfowl/quilkin-controller:{{ .Tag }}-arm64
     - nfowl/quilkin-controller:{{ .Tag }}-arm64
@@ -55,6 +56,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--platform=linux/arm64"
   - image_templates:
     - ghcr.io/nfowl/quilkin-controller:{{ .Tag }}-arm
     - nfowl/quilkin-controller:{{ .Tag }}-arm
@@ -70,6 +72,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--platform=linux/arm/v7"
 docker_manifests:
   - name_template: ghcr.io/nfowl/quilkin-controller:{{ .Tag }}
     image_templates:
