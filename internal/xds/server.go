@@ -52,6 +52,7 @@ type CacheUpdater struct {
 func (c *CacheUpdater) handleUpdates() {
 	c.logger.Info("Starting Cache Update handler")
 	for update := range c.updates {
+		c.logger.Info("Serving new snapshot")
 		snap := generateNodeSnapshot(update)
 		if err := snap.Consistent(); err != nil {
 			c.logger.Error("snapshot inconsistency")

@@ -41,7 +41,7 @@ func NewSotWStore(updates chan NodeConfig, deletes chan string, logger *zap.Suga
 type NodeConfig struct {
 	Endpoints map[string]*Endpoint
 	ProxyName string
-	count     int
+	senders   map[string]struct{}
 }
 
 type Endpoint struct {
@@ -56,8 +56,9 @@ func (s *SotwStore) AddReceiver(proxyName string, port int, address string, podN
 	if !ok {
 		//Making new NodeConfiguration
 		endpoints := make(map[string]*Endpoint)
+		senders := make(map[string]struct{})
 		endpoints[podName] = &Endpoint{Address: address, Port: port}
-		value = &NodeConfig{Endpoints: endpoints, ProxyName: proxyName, count: 0}
+		value = &NodeConfig{Endpoints: endpoints, ProxyName: proxyName, senders: senders}
 		s.Nodes[proxyName] = value
 	} else {
 		value.Endpoints[podName] = &Endpoint{Address: address, Port: port}
@@ -66,16 +67,18 @@ func (s *SotwStore) AddReceiver(proxyName string, port int, address string, podN
 	s.nodeUpdates <- *value
 }
 
-func (s *SotwStore) AddSender(proxyName string) {
+func (s *SotwStore) AddSender(proxyName string, podName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.Nodes[proxyName]
 	if !ok {
 		endpoints := make(map[string]*Endpoint)
-		value = &NodeConfig{ProxyName: proxyName, Endpoints: endpoints, count: 0}
+		senders := make(map[string]struct{})
+		value = &NodeConfig{ProxyName: proxyName, Endpoints: endpoints, senders: senders}
 		s.Nodes[proxyName] = value
 	}
-	value.count++
+	value.senders[podName] = struct{}{}
+	s.logger.Infow("Added sender", "name", proxyName, "remaining", len(value.senders))
 	s.nodeUpdates <- *value
 }
 
@@ -88,22 +91,29 @@ func (s *SotwStore) RemoveReceiver(proxyName string, podName string) {
 	if ok {
 		delete(value.Endpoints, podName)
 		s.logger.Infow("Deleting receiver endpoint", "proxyName", proxyName, "receiver", podName)
+		if len(value.senders) == 0 && len(value.Endpoints) == 0 {
+			delete(s.Nodes, proxyName)
+			return
+		}
 		s.nodeUpdates <- *s.Nodes[proxyName]
 	}
 }
 
-/// RemoveSender removes a quilkin proxy node/sender and returns whether or not its the last instance
-/// using that proxyName. If a node is removed the xds server is notified of the change.
-func (s *SotwStore) RemoveSender(proxyName string) bool {
+// RemoveSender removes a quilkin proxy node/sender and returns whether or not its the last instance
+// using that proxyName. If a node is removed the xds server is notified of the change.
+func (s *SotwStore) RemoveSender(proxyName string, podName string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	node, ok := s.Nodes[proxyName]
 	if ok {
-		nodes := node.count - 1
-		s.logger.Infow("removed sender", "name", proxyName, "remaining", nodes)
-		if nodes == 0 {
-			delete(s.Nodes, proxyName)
-			s.nodeDeletes <- proxyName
+		delete(node.senders, podName)
+		s.logger.Infow("removed sender", "name", proxyName, "remaining", len(node.senders))
+		if len(node.senders) <= 0 {
+			// Only delete the nodeconfig if all receivers are also empty
+			if len(node.Endpoints) == 0 {
+				delete(s.Nodes, proxyName)
+			}
+			// s.nodeDeletes <- proxyName
 			return true
 		}
 	}

@@ -98,7 +98,7 @@ func (q *QuilkinAnnotationReader) handleCreate(ctx context.Context, req admissio
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if !HasAnnotations(pod) {
+	if !HasAnnotations(pod) || !pod.DeletionTimestamp.IsZero() {
 		return admission.Allowed("No changes required")
 	}
 
@@ -110,8 +110,7 @@ func (q *QuilkinAnnotationReader) handleCreate(ctx context.Context, req admissio
 
 	value, ok2 := pod.Annotations[SenderAnnotation]
 	if ok2 {
-		q.logger.Infow("Adding sender")
-		q.store.AddSender(value)
+		q.logger.Infow("Adding sender", "pod", pod.Name)
 		cm := &v1.ConfigMap{}
 		err := q.client.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: "quilkin-" + value}, cm)
 		if err != nil {
@@ -132,7 +131,7 @@ func (q *QuilkinAnnotationReader) handleCreate(ctx context.Context, req admissio
 			}
 		}
 		container := makeQuilkinContainer()
-		q.logger.Infow("Adding sender finalizer")
+		q.logger.Infow("Adding sender finalizer", "pod", pod.Name)
 		controllerutil.AddFinalizer(pod, Finalizer)
 		pod.Spec.Containers = append(pod.Spec.Containers, container)
 		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{Name: "quilkin-config", VolumeSource: v1.VolumeSource{ConfigMap: &v1.ConfigMapVolumeSource{LocalObjectReference: v1.LocalObjectReference{Name: "quilkin-" + value}}}})

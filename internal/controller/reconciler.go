@@ -24,7 +24,6 @@ import (
 	"github.com/nfowl/quilkin-controller/internal/store"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/net"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -73,27 +72,34 @@ func (q *QuilkinReconciler) Reconcile(ctx context.Context, req reconcile.Request
 		// Handle and remove finalizer for sender
 		value, ok = pod.Annotations[SenderAnnotation]
 		if ok {
-			q.logger.Infow("Removing sender", "sender", value)
-			lastNode := q.store.RemoveSender(value)
-			if lastNode {
-				q.logger.Infow("Removing quilkin sender configmap", "configmap", "quilkin-"+value)
-				cm := &corev1.ConfigMap{}
-				if err = q.client.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: "quilkin-" + value}, cm); err != nil {
-					q.logger.Errorw("Error getting configmap", "namespace", pod.Namespace, "name", "quilkin-"+value)
-				}
-				if err := q.client.Delete(ctx, cm); err != nil {
-					q.logger.Errorw("Error deleting configmap", "namespace", pod.Namespace, "name", "quilkin-"+value)
-				}
-			}
+			q.logger.Infow("Removing sender", "sender", value, "pod", pod.Name)
+			_ = q.store.RemoveSender(value, pod.Name)
+			// if lastNode {
+			// 	q.logger.Infow("Removing quilkin sender configmap", "configmap", "quilkin-"+value)
+			// 	cm := &corev1.ConfigMap{}
+			// 	if err = q.client.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: "quilkin-" + value}, cm); err != nil {
+			// 		q.logger.Warnw("Error getting configmap", "namespace", pod.Namespace, "name", "quilkin-"+value, "error", err.Error())
+			// 	}
+			// 	if err := q.client.Delete(ctx, cm); err != nil {
+			// 		q.logger.Warnw("Error deleting configmap", "namespace", pod.Namespace, "name", "quilkin-"+value, "error", err.Error())
+			// 	}
+			// }
 		}
 
 		controllerutil.RemoveFinalizer(pod, Finalizer)
 		q.logger.Infow("Removing quilkin finalizer", "pod", pod.Name)
 		if err := q.client.Update(ctx, pod); err != nil {
-			return reconcile.Result{}, err
+			q.logger.Warnw("failure reconciling. Requeuing pod.", "error", err.Error())
+			return reconcile.Result{
+				Requeue: true,
+			}, nil
 		}
-	} else if pod.Status.Phase == corev1.PodRunning && isReceiver(pod) && pod.DeletionTimestamp.IsZero() {
-		q.handleRunningReceiver(pod)
+	} else if pod.Status.Phase == corev1.PodRunning && pod.DeletionTimestamp.IsZero() {
+		if isReceiver(pod) {
+			q.handleRunningReceiver(pod)
+		} else if isSender(pod) {
+			q.handleRunningSender(pod)
+		}
 	}
 	return reconcile.Result{}, nil
 }
@@ -108,6 +114,14 @@ func (q *QuilkinReconciler) handleRunningReceiver(pod *corev1.Pod) {
 	}
 	q.logger.Infow("Adding receiver", "proxy", proxyName, "port", port, "pod", pod.Status.PodIP)
 	q.store.AddReceiver(proxyName, port, pod.Status.PodIP, pod.Name)
+}
+
+// handleRunningReceiver This adds the sender to the internal store
+// This function assumes the pod has already had its annotations checked for the correct one
+func (q *QuilkinReconciler) handleRunningSender(pod *corev1.Pod) {
+	value := pod.Annotations[SenderAnnotation]
+	q.logger.Infow("Adding sender", "proxy", value)
+	q.store.AddSender(value, pod.Name)
 }
 
 // parseReceiveAnnotation validates and parses the string provided and returns the proxyName and port
@@ -128,6 +142,12 @@ func parseReceiveAnnotation(annotation string) (string, int, error) {
 // isReceiver returns whether the pod is a receiver or not
 func isReceiver(pod *corev1.Pod) bool {
 	_, ok := pod.Annotations[ReceiverAnnotation]
+	return ok
+}
+
+// isReceiver returns whether the pod is a receiver or not
+func isSender(pod *corev1.Pod) bool {
+	_, ok := pod.Annotations[SenderAnnotation]
 	return ok
 }
 
