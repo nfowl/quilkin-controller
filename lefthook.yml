@@ -1,0 +1,15 @@
+# EXAMPLE USAGE
+# Refer for explanation to following link:
+# https://github.com/evilmartians/lefthook/blob/master/docs/full_guide.md
+#
+pre-commit:
+  parallel: true
+  commands:
+    golint:
+      glob: "*.go"
+      run: golangci-lint run {staged_files}
+    govet:
+      tags: backend style
+      files: git ls-files -m
+      glob: "*.go"
+      run: go vet {files}
